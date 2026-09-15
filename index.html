@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Form Kunjungan Toko - SKN</title>
+<!-- api.js WAJIB dimuat sebelum skrip halaman: menggantikan google.script.run -->
+<script src="api.js"></script>
+<base target="_top">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:"Segoe UI",Roboto,Arial,sans-serif;background:#eef1f5;color:#1a2231;
+       font-size:15px;padding:0 0 40px}
+  .bar{background:linear-gradient(100deg,#122a52,#1d4e89 70%,#2a6fb8);color:#fff;padding:16px 18px}
+  .bar h1{font-size:18px;font-weight:700}
+  .bar p{font-size:12.5px;opacity:.85;margin-top:4px;line-height:1.5}
+  .wrap{max-width:560px;margin:0 auto;padding:14px}
+  .kartu{background:#fff;border-radius:12px;padding:16px;margin-bottom:12px;
+         box-shadow:0 2px 10px rgba(20,30,50,.06)}
+  h2{font-size:11.5px;letter-spacing:1.2px;text-transform:uppercase;color:#6b7a90;font-weight:700;
+     margin-bottom:12px;border-bottom:2px solid #eef1f5;padding-bottom:6px}
+  label{display:block;font-size:13px;font-weight:600;color:#41506a;margin:12px 0 5px}
+  label:first-of-type{margin-top:0}
+  input,select{width:100%;min-width:0;padding:11px 12px;border:1px solid #d7dee8;border-radius:9px;
+               font-size:15px;font-family:inherit;background:#fff;color:#1a2231}
+  input:focus,select:focus{outline:none;border-color:#1d4e89}
+  .hint{font-size:12px;color:#6b7a90;margin-top:5px;line-height:1.5}
+  /* min-width:0 WAJIB - tanpa ini kotak isian menolak menyusut dan halaman melebar di HP */
+  .duo{display:flex;gap:10px}
+  .duo>div{flex:1;min-width:0}
+  button{font-family:inherit;cursor:pointer;border:none}
+  .tbl{width:100%;background:#1d4e89;color:#fff;padding:14px;border-radius:10px;
+       font-size:16px;font-weight:700;margin-top:6px}
+  .tbl:disabled{background:#9fb0c8}
+  .tbl.abu{background:#eef1f5;color:#41506a;font-size:14px;font-weight:600;padding:11px}
+  .kecil{background:#f4f7fb;border:1px solid #d7dee8;color:#1d4e89;padding:9px 14px;
+         border-radius:9px;font-size:13.5px;font-weight:600}
+  /* promotor */
+  .prow{display:flex;gap:8px;align-items:flex-end;margin-bottom:10px}
+  .prow>div{min-width:0}
+  .prow .m{flex:1.4}.prow .j{flex:.8}.prow .t{flex:1}
+  .prow input,.prow select{padding:10px 8px;font-size:14px}
+  .prow label{margin:0 0 4px;font-size:11.5px}
+  .buang{background:#fdecec;color:#b3261e;border-radius:9px;padding:11px 12px;font-size:15px;
+         line-height:1;font-weight:700}
+  .tetap{background:#f6f9ff}
+  /* video */
+  .vitem{display:flex;align-items:center;gap:10px;background:#f6f9ff;border:1px solid #d8e4f5;
+         border-radius:9px;padding:10px 12px;margin-bottom:8px;font-size:13px}
+  .vitem .nm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .vitem .st{font-weight:700;white-space:nowrap}
+  .st.ok{color:#0b7a3b}.st.proses{color:#8a6b00}.st.gagal{color:#b3261e}
+  .barp{height:6px;background:#e7ecf3;border-radius:99px;overflow:hidden;margin-top:7px}
+  .barp i{display:block;height:100%;background:#1d4e89;width:0}
+  /* pesan */
+  .pesan{border-radius:10px;padding:13px 15px;font-size:13.5px;line-height:1.6;margin-bottom:12px;display:none}
+  .pesan.tampil{display:block}
+  .p-info{background:#f1f6fd;border:1px solid #c9dcf5;color:#1c3d63}
+  .p-tunggu{background:#fff8e6;border:1px solid #f0dca8;color:#7a5a00}
+  .p-galat{background:#fdecec;border:1px solid #f5c6c4;color:#8a1c17}
+  .pesan ul{margin:7px 0 0 18px}
+  .pesan li{margin-bottom:3px}
+  .pesan .cat{display:block;margin-top:9px;font-size:12.5px;opacity:.85}
+  .selesai{text-align:center;padding:40px 20px}
+  .selesai .ck{font-size:52px;color:#16a34a}
+  .selesai h3{font-size:20px;margin:12px 0 8px}
+  .selesai p{color:#6b7a90;line-height:1.7;font-size:14px}
+</style>
+</head>
+<body>
+
+<div class="bar">
+  <h1>Form Kunjungan Toko</h1>
+  <p>PT Satelit Komunika Nusantara &middot; Isi selengkapnya yang kamu ketahui di lokasi,
+     lalu kirim.</p>
+</div>
+
+<div class="wrap" id="isi">
+
+  <div id="pesan" class="pesan"></div>
+
+  <div class="kartu">
+    <h2>Data toko</h2>
+    <label>Tanggal kunjungan</label>
+    <input type="date" id="f_tanggal">
+    <label>Provinsi</label>
+    <select id="f_provinsi"><option value="">-- pilih --</option></select>
+    <label>Area / Kota</label>
+    <input type="text" id="f_area" placeholder="mis. Pekanbaru">
+    <label>Nama toko</label>
+    <input type="text" id="f_toko" placeholder="mis. Aneka Cell">
+    <label>Level toko</label>
+    <select id="f_level"><option value="">-- pilih --</option></select>
+    <div class="duo">
+      <div>
+        <label>Nama pelapor</label>
+        <input type="text" id="f_pelapor" placeholder="nama kamu">
+      </div>
+      <div>
+        <label>Peran</label>
+        <select id="f_peran"></select>
+      </div>
+    </div>
+  </div>
+
+  <div class="kartu">
+    <h2>Lokasi toko</h2>
+    <button class="kecil" id="btnGps" onclick="ambilGps()">Ambil lokasi otomatis</button>
+    <div class="hint" id="gpsInfo">Berdiri di depan toko, lalu tekan tombol di atas.
+      Izinkan akses lokasi kalau HP bertanya.</div>
+
+    <div style="border-top:1px dashed #d7dee8;margin:14px 0 12px"></div>
+
+    <label>Kalau tombol di atas gagal &mdash; tempel link Google Maps</label>
+    <div style="display:flex;gap:8px">
+      <input type="text" id="f_linkmaps" placeholder="tempel link di sini" style="flex:1">
+      <button class="kecil" id="btnLink" onclick="ambilDariLink()" style="white-space:nowrap">Ambil</button>
+    </div>
+    <div class="hint" id="linkInfo">Buka Google Maps &rarr; cari tokonya &rarr; tekan
+      <b>Bagikan</b> &rarr; <b>Salin link</b>. Tempel di sini, tekan Ambil.
+      Boleh juga menempel angka koordinat langsung.</div>
+
+    <div class="duo" style="margin-top:12px">
+      <div><label>Lat</label><input type="text" id="f_lat" placeholder="terisi otomatis"></div>
+      <div><label>Lng</label><input type="text" id="f_lng" placeholder="terisi otomatis"></div>
+    </div>
+  </div>
+
+  <div class="kartu">
+    <h2>Video toko</h2>
+    <button class="kecil" onclick="document.getElementById('f_video').click()">Pilih / rekam video</button>
+    <input type="file" id="f_video" accept="video/*" capture="environment" multiple
+           style="display:none" onchange="pilihVideo(this)">
+    <div class="hint">Rekam sambil berjalan dari pintu masuk ke seluruh etalase.
+      Cukup 30-60 detik. Boleh beberapa video kalau tokonya besar.</div>
+    <div id="daftarVideo" style="margin-top:12px"></div>
+  </div>
+
+  <div class="kartu">
+    <h2>Promotor di toko</h2>
+    <div class="hint" style="margin:0 0 12px">Isi apa adanya, termasuk promotor merek lain.
+      Jumlah promotor merek lain dipakai untuk mengukur besarnya toko.<br>
+      <b>Kalau tidak ada promotor, tulis angka 0</b> &mdash; jangan dikosongkan. Kosong berarti
+      "belum dihitung", dan itu beda artinya dengan "tidak ada".</div>
+    <div id="daftarPromotor"></div>
+    <button class="kecil" onclick="tambahPromotor('')">+ Tambah merek lain</button>
+  </div>
+
+  <!-- Muncul sendiri kalau SEMUA promotor diisi 0. Toko tanpa promotor diukur dari sini. -->
+  <div class="kartu" id="kartuJual" style="display:none">
+    <h2>Rata-rata penjualan merek lain</h2>
+    <div class="hint" style="margin:0 0 12px">Toko ini <b>tidak punya promotor sama sekali</b>, jadi
+      besarnya toko diukur dari penjualan merek lain. Tanyakan ke pemilik atau penjaga toko:
+      <b>rata-rata berapa unit per bulan</b> tiap merek terjual.<br>
+      Infinix &amp; itel tidak perlu diisi di sini &mdash; sudah dari angka pengambilan.</div>
+    <div id="daftarJual"></div>
+    <button class="kecil" onclick="tambahJual('')">+ Tambah merek</button>
+  </div>
+
+  <div class="kartu">
+    <h2>Pengambilan bulan berjalan</h2>
+    <div class="duo">
+      <div><label>Infinix (unit)</label><input type="number" min="0" id="f_ambilInf" placeholder="0"></div>
+      <div><label>itel (unit)</label><input type="number" min="0" id="f_ambilItel" placeholder="0"></div>
+    </div>
+    <div class="hint">Total unit yang diambil toko ini bulan ini. Kalau belum ada, isi 0.</div>
+  </div>
+
+  <div id="pesanBawah" class="pesan"></div>
+  <button class="tbl" id="btnKirim" onclick="kirim()">Kirim laporan</button>
+  <div class="hint" style="text-align:center;margin-top:10px">
+    Laporan tetap bisa dikirim walau masih ada yang belum terisi.
+  </div>
+</div>
+
+<script>
+var PILIHAN = { level: [], provinsi: [], merek: [] };
+var VIDEO = [];      // { file, status, fileId, persen }
+var MEREK_TETAP = ['Infinix', 'itel'];
+
+/* ---------- awal ---------- */
+google.script.run.withSuccessHandler(function (p) {
+  PILIHAN = p;
+  isiSelect('f_provinsi', p.provinsi);
+  isiSelect('f_level', p.level);
+  // Peran tidak punya baris "-- pilih --": pilihan pertama langsung terpakai
+  isiSelect('f_peran', p.peran || ['Sales SKN']);
+  MEREK_TETAP.forEach(function (m) { tambahPromotor(m, true); });
+  segarkanInfo();
+}).pilihan();
+
+// daftar "yang belum terisi" ikut berubah begitu sales mengetik
+document.getElementById('isi').addEventListener('input', segarkanInfo);
+document.getElementById('isi').addEventListener('change', segarkanInfo);
+
+document.getElementById('f_tanggal').value = new Date().toISOString().slice(0, 10);
+
+function isiSelect(id, arr) {
+  var s = document.getElementById(id);
+  arr.forEach(function (v) {
+    var o = document.createElement('option'); o.value = v; o.textContent = v; s.appendChild(o);
+  });
+}
+
+/* ---------- GPS ---------- */
+function ambilGps() {
+  var info = document.getElementById('gpsInfo');
+  if (!navigator.geolocation) { info.textContent = 'HP ini tidak mendukung lokasi otomatis. Isi manual.'; return; }
+  info.textContent = 'Mencari lokasi...';
+  navigator.geolocation.getCurrentPosition(function (pos) {
+    document.getElementById('f_lat').value = pos.coords.latitude.toFixed(6);
+    document.getElementById('f_lng').value = pos.coords.longitude.toFixed(6);
+    info.textContent = 'Lokasi terisi (ketelitian sekitar ' + Math.round(pos.coords.accuracy) + ' meter).';
+  }, function () {
+    info.textContent = 'Gagal mengambil lokasi. Pakai cara tempel link Google Maps di bawah.';
+  }, { enableHighAccuracy: true, timeout: 15000 });
+}
+
+/* ---------- ambil koordinat dari link Google Maps ---------- */
+function ambilDariLink() {
+  var link = document.getElementById('f_linkmaps').value.trim();
+  var info = document.getElementById('linkInfo');
+  var btn = document.getElementById('btnLink');
+  if (!link) { info.textContent = 'Tempel dulu link-nya.'; return; }
+  btn.disabled = true; btn.textContent = 'Membaca...';
+  info.textContent = 'Membaca link... (link pendek perlu beberapa detik)';
+  google.script.run
+    .withSuccessHandler(function (r) {
+      btn.disabled = false; btn.textContent = 'Ambil';
+      if (r && r.ok) {
+        document.getElementById('f_lat').value = r.lat;
+        document.getElementById('f_lng').value = r.lng;
+        info.innerHTML = '<b style="color:#0b7a3b">Lokasi terisi.</b> ' + r.lat + ', ' + r.lng;
+        segarkanInfo();
+      } else {
+        info.innerHTML = '<b style="color:#b3261e">Gagal.</b> ' +
+          ((r && r.pesan) ? r.pesan : 'Koordinat tidak ketemu di link itu.');
+      }
+    })
+    .withFailureHandler(function (e) {
+      btn.disabled = false; btn.textContent = 'Ambil';
+      info.innerHTML = '<b style="color:#b3261e">Gagal.</b> ' + e.message;
+    })
+    .resolveMaps(link);
+}
+
+/* ---------- promotor ---------- */
+function tambahPromotor(merek, tetap) {
+  var wrap = document.getElementById('daftarPromotor');
+  var i = wrap.children.length;
+  var d = document.createElement('div');
+  d.className = 'prow' + (tetap ? ' tetap' : '');
+  var opsi = '<option value="">-- merek --</option>';
+  PILIHAN.merek.forEach(function (m) {
+    opsi += '<option value="' + m + '"' + (m === merek ? ' selected' : '') + '>' + m + '</option>';
+  });
+  d.innerHTML =
+    '<div class="m"><label>Merek</label>' +
+      (tetap ? '<input type="text" value="' + merek + '" readonly data-merek="' + merek + '">'
+             : '<select class="pm">' + opsi + '</select>') + '</div>' +
+    '<div class="j"><label>Orang</label><input type="number" min="0" class="pj" placeholder="isi 0"></div>' +
+    '<div class="t"><label>Target/org</label><input type="number" min="0" class="pt" placeholder="unit"></div>' +
+    (tetap ? '' : '<button class="buang" onclick="this.parentNode.remove();segarkanInfo()">&times;</button>');
+  wrap.appendChild(d);
+  segarkanInfo();
+}
+function bacaPromotor() {
+  var out = [];
+  var baris = document.getElementById('daftarPromotor').children;
+  for (var i = 0; i < baris.length; i++) {
+    var b = baris[i];
+    var elMerek = b.querySelector('.pm') || b.querySelector('[data-merek]');
+    var merek = elMerek ? (elMerek.value || elMerek.getAttribute('data-merek')) : '';
+    if (!merek) continue;
+    out.push({
+      merek: merek,
+      jumlah: b.querySelector('.pj').value,
+      target: b.querySelector('.pt').value
+    });
+  }
+  return out;
+}
+
+/* ---------- rata-rata penjualan merek lain (hanya toko tanpa promotor) ---------- */
+function tambahJual(merek, unit) {
+  var wrap = document.getElementById('daftarJual');
+  var d = document.createElement('div');
+  d.className = 'prow';
+  var opsi = '<option value="">-- merek --</option>';
+  PILIHAN.merek.forEach(function (m) {
+    if (/^(infinix|itel)$/i.test(m)) return;          // SKN sudah dari pengambilan
+    opsi += '<option value="' + m + '"' + (m === merek ? ' selected' : '') + '>' + m + '</option>';
+  });
+  d.innerHTML =
+    '<div class="m"><label>Merek</label><select class="jm">' + opsi + '</select></div>' +
+    '<div class="t"><label>Unit / bulan</label><input type="number" min="0" class="ju" placeholder="rata-rata"' +
+      ((unit === '' || unit === undefined) ? '' : ' value="' + unit + '"') + '></div>' +
+    '<button class="buang" onclick="this.parentNode.remove();segarkanInfo()">&times;</button>';
+  wrap.appendChild(d);
+  segarkanInfo();
+}
+function bacaJual() {
+  var out = [], baris = document.getElementById('daftarJual').children;
+  for (var i = 0; i < baris.length; i++) {
+    var m = baris[i].querySelector('.jm').value;
+    if (!m) continue;
+    out.push({ merek: m, unit: baris[i].querySelector('.ju').value });
+  }
+  return out;
+}
+/** Sama dengan tanpaPromotor_ di Code.gs: semua jumlah SUDAH diisi dan semuanya 0. */
+function tanpaPromotorLokal(prom) {
+  if (!prom.length) return false;
+  for (var i = 0; i < prom.length; i++) {
+    var j = String(prom[i].jumlah).trim();
+    if (j === '' || Number(j) > 0) return false;
+  }
+  return true;
+}
+
+/* ---------- video ---------- */
+function pilihVideo(input) {
+  for (var i = 0; i < input.files.length; i++) {
+    VIDEO.push({ file: input.files[i], status: 'antre', fileId: '', persen: 0 });
+  }
+  input.value = '';
+  gambarVideo();
+  jalankanUpload();
+}
+function gambarVideo() {
+  var w = document.getElementById('daftarVideo');
+  w.innerHTML = '';
+  VIDEO.forEach(function (v, i) {
+    var mb = (v.file.size / 1048576).toFixed(1);
+    var kelas = v.status === 'selesai' ? 'ok' : (v.status === 'gagal' ? 'gagal' : 'proses');
+    var teks = v.status === 'selesai' ? 'terkirim'
+             : (v.status === 'gagal' ? 'gagal' : (v.status === 'kirim' ? v.persen + '%' : 'antre'));
+    var d = document.createElement('div');
+    d.className = 'vitem';
+    d.innerHTML = '<div class="nm">' + v.file.name + '<div style="color:#8a99ae;font-size:11.5px">' + mb + ' MB</div>' +
+                  (v.status === 'kirim' ? '<div class="barp"><i style="width:' + v.persen + '%"></i></div>' : '') +
+                  '</div><div class="st ' + kelas + '">' + teks + '</div>';
+    w.appendChild(d);
+  });
+  segarkanInfo();
+}
+function jalankanUpload() {
+  var v = null;
+  for (var i = 0; i < VIDEO.length; i++) {
+    if (VIDEO[i].status === 'kirim') return;                 // satu-satu saja
+    if (VIDEO[i].status === 'antre') { v = VIDEO[i]; break; }
+  }
+  if (!v) return;
+  v.status = 'kirim'; v.persen = 0; gambarVideo();
+  google.script.run
+    .withSuccessHandler(function (sid) { kirimPotongan(v, sid, 0); })
+    .withFailureHandler(function (e) { v.status = 'gagal'; gambarVideo(); pesanKurang(['Upload gagal: ' + e.message]); })
+    .mulaiUpload(v.file.name, v.file.type || 'video/mp4');
+}
+function kirimPotongan(v, sid, mulai) {
+  var POTONG = 3 * 1024 * 1024;                              // kelipatan 256 KB, syarat Drive
+  var akhir = Math.min(mulai + POTONG, v.file.size);
+  var fr = new FileReader();
+  fr.onload = function () {
+    var b64 = fr.result.split(',')[1];
+    google.script.run
+      .withSuccessHandler(function (res) {
+        if (res.done) {
+          v.status = 'selesai'; v.fileId = res.fileId; v.persen = 100;
+          gambarVideo(); jalankanUpload();
+        } else {
+          v.persen = Math.round(akhir / v.file.size * 100);
+          gambarVideo();
+          kirimPotongan(v, sid, akhir);
+        }
+      })
+      .withFailureHandler(function (e) { v.status = 'gagal'; gambarVideo(); pesanKurang(['Upload gagal: ' + e.message]); })
+      .uploadChunk(sid, b64, mulai, v.file.size, akhir >= v.file.size);
+  };
+  fr.onerror = function () { v.status = 'gagal'; gambarVideo(); };
+  fr.readAsDataURL(v.file.slice(mulai, akhir));
+}
+
+/* ---------- kirim ---------- */
+function bacaForm() {
+  return {
+    tanggalKunjungan: document.getElementById('f_tanggal').value,
+    provinsi: document.getElementById('f_provinsi').value,
+    area: document.getElementById('f_area').value,
+    namaToko: document.getElementById('f_toko').value,
+    level: document.getElementById('f_level').value,
+    pelapor: document.getElementById('f_pelapor').value,
+    peran: document.getElementById('f_peran').value,
+    lat: document.getElementById('f_lat').value,
+    lng: document.getElementById('f_lng').value,
+    pengambilanInfinix: document.getElementById('f_ambilInf').value,
+    pengambilanItel: document.getElementById('f_ambilItel').value,
+    promotor: bacaPromotor(),
+    jualLain: bacaJual()
+  };
+}
+function idVideoSelesai() {
+  return VIDEO.filter(function (v) { return v.status === 'selesai'; })
+              .map(function (v) { return v.fileId; });
+}
+/**
+ * Cermin ringan dari cekLengkap_ di Code.gs - HANYA untuk memberi tahu sales,
+ * bukan untuk menghalangi kirim. Yang menentukan status LENGKAP tetap server.
+ */
+function kurangLokal() {
+  var f = bacaForm(), k = [];
+  if (!String(f.tanggalKunjungan).trim()) k.push('Tanggal kunjungan');
+  if (!String(f.provinsi).trim())         k.push('Provinsi');
+  if (!String(f.area).trim())             k.push('Area / Kota');
+  if (!String(f.namaToko).trim())         k.push('Nama toko');
+  if (!String(f.level).trim())            k.push('Level toko');
+  if (!String(f.pelapor).trim())          k.push('Nama pelapor');
+  if (!f.lat || !f.lng)                   k.push('Lokasi toko');
+  if (!idVideoSelesai().length)           k.push('Video toko');
+  if (String(f.pengambilanInfinix).trim() === '') k.push('Pengambilan Infinix');
+  if (String(f.pengambilanItel).trim() === '')    k.push('Pengambilan itel');
+  var punya = {};
+  f.promotor.forEach(function (p) {
+    var nm = String(p.merek || '').trim();
+    if (!nm) return;
+    punya[nm.toLowerCase()] = true;
+    if (String(p.jumlah).trim() === '') k.push('Jumlah promotor ' + nm);
+    else if (Number(p.jumlah) > 0 && String(p.target).trim() === '') k.push('Target promotor ' + nm);
+  });
+  if (!punya['infinix']) k.push('Baris promotor Infinix');
+  if (!punya['itel'])    k.push('Baris promotor itel');
+  if (tanpaPromotorLokal(f.promotor)) {
+    if (!f.jualLain.length) k.push('Rata-rata penjualan merek lain per bulan');
+    f.jualLain.forEach(function (x) {
+      if (String(x.unit).trim() === '') k.push('Rata-rata penjualan ' + x.merek + ' per bulan');
+    });
+  }
+  return k;
+}
+
+/** Kotak pemberitahuan di bawah tombol. Nadanya INFORMASI, bukan larangan. */
+function segarkanInfo() {
+  var p = document.getElementById('pesanBawah');
+  if (!p) return;
+  // kotak penjualan merek lain hanya muncul kalau semua promotor diisi 0
+  var kj = document.getElementById('kartuJual');
+  if (kj) {
+    var tanpa = tanpaPromotorLokal(bacaPromotor());
+    kj.style.display = tanpa ? '' : 'none';
+    if (tanpa && !document.getElementById('daftarJual').children.length) { tambahJual(''); return; }
+  }
+  var k = kurangLokal();
+  if (!k.length) {
+    p.className = 'pesan p-info tampil';
+    p.innerHTML = '<b>Semua sudah terisi.</b> Tinggal tekan Kirim.';
+    return;
+  }
+  p.className = 'pesan p-info tampil';
+  p.innerHTML = '<b>Yang belum terisi:</b><ul>' +
+    k.map(function (x) { return '<li>' + x + '</li>'; }).join('') + '</ul>' +
+    '<span class="cat">Laporan tetap bisa dikirim.</span>';
+}
+
+function pesanAtas(kelas, isi) {
+  var p = document.getElementById('pesan');
+  p.className = 'pesan ' + kelas + ' tampil';
+  p.innerHTML = isi;
+  window.scrollTo(0, 0);
+}
+
+function kirim() {
+  var btn = document.getElementById('btnKirim');
+  // Satu-satunya alasan menunda: video belum selesai naik. Kalau dikirim sekarang,
+  // videonya benar-benar tidak ikut - jadi ini bukan larangan, cuma menunggu.
+  var v = null;
+  for (var i = 0; i < VIDEO.length; i++) {
+    if (VIDEO[i].status === 'kirim' || VIDEO[i].status === 'antre') { v = VIDEO[i]; break; }
+  }
+  if (v) {
+    pesanAtas('p-tunggu', '<b>Video masih dikirim (' + (v.persen || 0) + '%).</b> ' +
+      'Tunggu sampai tertulis "terkirim" supaya videonya ikut, baru tekan Kirim lagi.');
+    return;
+  }
+
+  btn.disabled = true; btn.textContent = 'Menyimpan...';
+  google.script.run
+    .withSuccessHandler(function (res) { selesai(res); })
+    .withFailureHandler(function (e) {
+      btn.disabled = false; btn.textContent = 'Kirim laporan';
+      pesanAtas('p-galat', '<b>Gagal menyimpan.</b> ' + e.message +
+        '<span class="cat">Periksa sinyal lalu tekan Kirim lagi. Isian kamu tidak hilang.</span>');
+    })
+    .simpanKunjungan(bacaForm(), idVideoSelesai());
+}
+
+function selesai(res) {
+  var t;
+  if (res.lengkap) {
+    t = '<div class="ck">&#10004;</div><h3>Laporan terkirim</h3>' +
+        '<p>Nomor: <b>' + res.id + '</b><br>Data sudah lengkap.</p>';
+  } else {
+    t = '<div class="ck">&#10004;</div><h3>Laporan terkirim</h3>' +
+        '<p>Nomor: <b>' + res.id + '</b></p>' +
+        '<div class="pesan p-info tampil" style="text-align:left;margin-top:16px">' +
+        '<b>Catatan &mdash; yang belum terisi:</b><ul>' +
+        res.kurang.map(function (x) { return '<li>' + x + '</li>'; }).join('') + '</ul>' +
+        '<span class="cat">Data kamu sudah tersimpan, tidak perlu diisi ulang.</span></div>';
+  }
+  document.getElementById('isi').innerHTML =
+    '<div class="kartu selesai">' + t +
+    '<button class="tbl" style="margin-top:18px" onclick="location.reload()">Isi toko berikutnya</button></div>';
+  window.scrollTo(0, 0);
+}
+</script>
+</body>
+</html>
