@@ -659,7 +659,14 @@ function tambahProm(merek, jumlah, target, tetap) {
   d.innerHTML =
     '<div class="m"><label>Merek</label>' +
       (tetap ? '<input type="text" value="' + esc(merek) + '" readonly data-merek="' + esc(merek) + '">'
-             : '<select class="pm">' + opsi(PILIH.merek, merek) + '</select>') + '</div>' +
+             : (function () {
+                 // merek ketikan lama (tidak ada di daftar) -> pilih "Lainnya" dan tampilkan namanya
+                 var diKetik = !!merek && PILIH.merek.indexOf(merek) < 0;
+                 return '<select class="pm" onchange="aturKetikMerek(this)">' + opsi(PILIH.merek, diKetik ? '' : merek) +
+                   '<option value="__ketik"' + (diKetik ? ' selected' : '') + '>Lainnya (ketik sendiri)</option></select>' +
+                   '<input type="text" class="jk" placeholder="ketik nama merek" value="' + (diKetik ? esc(merek) : '') + '"' +
+                   ' style="' + (diKetik ? '' : 'display:none;') + 'margin-top:6px">';
+               })()) + '</div>' +
     '<div class="j"><label>Orang</label><input type="number" min="0" class="pj" placeholder="' +
       (tetap ? 'isi 0' : '0') + '" value="' +
       (jumlah === '' || jumlah === undefined ? '' : jumlah) + '"></div>' +
@@ -672,8 +679,8 @@ function bacaProm() {
   var out = [], baris = document.getElementById('e_promotor').children;
   for (var i = 0; i < baris.length; i++) {
     var b = baris[i];
-    var el = b.querySelector('.pm') || b.querySelector('[data-merek]');
-    var m = el ? (el.value || el.getAttribute('data-merek')) : '';
+    var m = b.querySelector('.pm') ? namaMerek(b, '.pm')
+          : (b.querySelector('[data-merek]') ? b.querySelector('[data-merek]').getAttribute('data-merek') : '');
     if (!m) continue;
     out.push({ merek: m, jumlah: b.querySelector('.pj').value, target: b.querySelector('.pt').value });
   }
@@ -707,8 +714,8 @@ function aturKetikMerek(sel) {
   if (ketik) k.focus(); else k.value = '';
 }
 /** Nama merek ketikan: huruf, angka, spasi saja (supaya terbaca lagi dari teks Sheet). */
-function namaMerek(baris) {
-  var m = baris.querySelector('.jm').value;
+function namaMerek(baris, kelas) {
+  var m = baris.querySelector(kelas || '.jm').value;
   if (m !== '__ketik') return m;
   return String(baris.querySelector('.jk').value || '')
     .replace(/[^A-Za-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').replace(/^[^A-Za-z]+/, '').trim();

@@ -258,10 +258,13 @@ function tambahPromotor(merek, tetap) {
   PILIHAN.merek.forEach(function (m) {
     opsi += '<option value="' + m + '"' + (m === merek ? ' selected' : '') + '>' + m + '</option>';
   });
+  // pilihan paling bawah: merek yang tidak ada di daftar diketik sendiri
+  opsi += '<option value="__ketik">Lainnya (ketik sendiri)</option>';
   d.innerHTML =
     '<div class="m"><label>Merek</label>' +
       (tetap ? '<input type="text" value="' + merek + '" readonly data-merek="' + merek + '">'
-             : '<select class="pm">' + opsi + '</select>') + '</div>' +
+             : '<select class="pm" onchange="aturKetikMerek(this)">' + opsi + '</select>' +
+               '<input type="text" class="jk" placeholder="ketik nama merek" style="display:none;margin-top:6px">') + '</div>' +
     '<div class="j"><label>Orang</label><input type="number" min="0" class="pj" placeholder="isi 0"></div>' +
     '<div class="t"><label>Target/org</label><input type="number" min="0" class="pt" placeholder="unit"></div>' +
     (tetap ? '' : '<button class="buang" onclick="this.parentNode.remove();segarkanInfo()">&times;</button>');
@@ -282,8 +285,8 @@ function bacaPromotor() {
   var baris = document.getElementById('daftarPromotor').children;
   for (var i = 0; i < baris.length; i++) {
     var b = baris[i];
-    var elMerek = b.querySelector('.pm') || b.querySelector('[data-merek]');
-    var merek = elMerek ? (elMerek.value || elMerek.getAttribute('data-merek')) : '';
+    var merek = b.querySelector('.pm') ? namaMerek(b, '.pm')
+              : (b.querySelector('[data-merek]') || { getAttribute: function () { return ''; } }).getAttribute('data-merek');
     if (!merek) continue;
     out.push({
       merek: merek,
@@ -324,8 +327,8 @@ function aturKetikMerek(sel) {
   segarkanInfo();
 }
 /** Nama merek ketikan: huruf, angka, spasi saja (supaya terbaca lagi dari teks Sheet). */
-function namaMerek(baris) {
-  var m = baris.querySelector('.jm').value;
+function namaMerek(baris, kelas) {
+  var m = baris.querySelector(kelas || '.jm').value;
   if (m !== '__ketik') return m;
   return String(baris.querySelector('.jk').value || '')
     .replace(/[^A-Za-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').replace(/^[^A-Za-z]+/, '').trim();
