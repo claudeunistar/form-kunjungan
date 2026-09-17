@@ -65,6 +65,7 @@
   .selesai .ck{font-size:52px;color:#16a34a}
   .selesai h3{font-size:20px;margin:12px 0 8px}
   .selesai p{color:#6b7a90;line-height:1.7;font-size:14px}
+  .prow input:disabled{background:#eef1f5;color:#94a3b8;border-style:dashed;cursor:not-allowed}
 </style>
 </head>
 <body>
@@ -141,17 +142,20 @@
     <div class="hint" style="margin:0 0 12px">Isi apa adanya, termasuk promotor merek lain.
       Jumlah promotor merek lain dipakai untuk mengukur besarnya toko.<br>
       <b>Kalau tidak ada promotor, tulis angka 0</b> &mdash; jangan dikosongkan. Kosong berarti
-      "belum dihitung", dan itu beda artinya dengan "tidak ada".</div>
+      "belum dihitung", dan itu beda artinya dengan "tidak ada".<br>
+      Target/org hanya untuk merek yang <b>ada</b> promotornya. Merek tanpa promotor tapi
+      diketahui jualannya &rarr; isi di kotak <b>Rata-rata penjualan</b> di bawah.</div>
     <div id="daftarPromotor"></div>
     <button class="kecil" onclick="tambahPromotor('')">+ Tambah merek lain</button>
   </div>
 
-  <!-- Muncul sendiri kalau SEMUA promotor diisi 0. Toko tanpa promotor diukur dari sini. -->
-  <div class="kartu" id="kartuJual" style="display:none">
-    <h2>Rata-rata penjualan merek lain</h2>
-    <div class="hint" style="margin:0 0 12px">Toko ini <b>tidak punya promotor sama sekali</b>, jadi
-      besarnya toko diukur dari penjualan merek lain. Tanyakan ke pemilik atau penjaga toko:
-      <b>rata-rata berapa unit per bulan</b> tiap merek terjual.<br>
+  <!-- Selalu tampil (17 Sep 2026): merek TANPA promotor yang rata-rata jualnya diketahui ikut
+       mengukur besarnya toko. Wajib diisi hanya kalau toko tidak punya promotor sama sekali. -->
+  <div class="kartu" id="kartuJual">
+    <h2>Rata-rata penjualan merek tanpa promotor</h2>
+    <div class="hint" style="margin:0 0 12px">Untuk merek yang <b>tidak ada promotornya</b> di toko ini.
+      Tanyakan ke pemilik atau penjaga toko: <b>rata-rata berapa unit per bulan</b> merek itu terjual.<br>
+      Tidak tahu? Kosongkan saja. <b>Wajib diisi kalau toko tidak punya promotor sama sekali.</b><br>
       Infinix &amp; itel tidak perlu diisi di sini &mdash; sudah dari angka pengambilan.</div>
     <div id="daftarJual"></div>
     <button class="kecil" onclick="tambahJual('')">+ Tambah merek</button>
@@ -262,7 +266,16 @@ function tambahPromotor(merek, tetap) {
     '<div class="t"><label>Target/org</label><input type="number" min="0" class="pt" placeholder="unit"></div>' +
     (tetap ? '' : '<button class="buang" onclick="this.parentNode.remove();segarkanInfo()">&times;</button>');
   wrap.appendChild(d);
+  d.querySelector('.pj').addEventListener('input', function () { aturTarget(d); });
+  aturTarget(d);
   segarkanInfo();
+}
+/** Orang = 0 -> kolom Target/org dikunci. Angka jualan merek itu tempatnya di kotak penjualan. */
+function aturTarget(d) {
+  var pj = d.querySelector('.pj'), pt = d.querySelector('.pt');
+  var nol = String(pj.value).trim() !== '' && Number(pj.value) === 0;
+  pt.disabled = nol;
+  if (nol) { pt.value = ''; pt.placeholder = '-'; } else { pt.placeholder = 'unit'; }
 }
 function bacaPromotor() {
   var out = [];
@@ -442,11 +455,10 @@ function kurangLokal() {
 function segarkanInfo() {
   var p = document.getElementById('pesanBawah');
   if (!p) return;
-  // kotak penjualan merek lain hanya muncul kalau semua promotor diisi 0
+  // kotak penjualan selalu tampil; kalau semua promotor 0, sediakan 1 baris kosong
   var kj = document.getElementById('kartuJual');
   if (kj) {
     var tanpa = tanpaPromotorLokal(bacaPromotor());
-    kj.style.display = tanpa ? '' : 'none';
     if (tanpa && !document.getElementById('daftarJual').children.length) { tambahJual(''); return; }
   }
   var k = kurangLokal();

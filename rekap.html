@@ -436,7 +436,7 @@ function gambarPeta() {
         (idDrive(r.rapor)
           ? ('<br>Penilaian: <span style="font-weight:700;padding:1px 8px;border-radius:99px;background:' +
                gaya.latar + ';color:' + gaya.teks + '">' + esc(r.status25Teks || gaya.label) + '</span>' +
-             (adaNilai25(r.pangsa) ? ' &middot; pangsa SKN <b>' + esc(r.pangsa) + '%</b>' : ''))
+             (adaNilai25(r.pangsa) ? ' &middot; market share SKN <b>' + esc(r.pangsa) + '%</b>' : ''))
           : '<br>Penilaian: <span style="color:#64748b">belum ada</span>') +
       '</div>' +
       '<div style="margin-top:8px"><span style="font-size:11px;font-weight:700;padding:2px 9px;' +
@@ -525,7 +525,7 @@ function gambarPanel() {
         ringkas.push('<span style="font-weight:700;color:' + gayaP.teks + '">' +
                      esc(r.status25Teks || gayaP.label) + '</span>');
       }
-      if (adaNilai25(r.pangsa)) ringkas.push('pangsa SKN ' + esc(r.pangsa) + '%');
+      if (adaNilai25(r.pangsa)) ringkas.push('market share SKN ' + esc(r.pangsa) + '%');
       h += '<div class="hint" style="margin:0 0 5px"><b>Kartu penilaian</b>' +
            (ringkas.length ? ' &mdash; ' + ringkas.join(' &middot; ') : '') +
            (r.dinilai ? '<br>dinilai ' + esc(r.dinilai) : '') + '</div>' +
@@ -581,12 +581,13 @@ function gambarPanel() {
     '<button class="kecil" onclick="tambahProm(\'\',\'\',\'\',false)">+ Tambah merek</button>' +
     '<div class="hint">Infinix &amp; itel wajib ada dan tidak bisa dihapus &mdash; <b>kalau memang ' +
     'tidak ada promotornya, isi 0</b>. Merek kompetitor ikut dicatat karena jumlah promotor mereka ' +
-    'dipakai mengukur besarnya toko.</div></div>';
+    'dipakai mengukur besarnya toko. <b>Target/org hanya untuk merek yang ada promotornya</b> &mdash; ' +
+    'merek tanpa promotor tapi diketahui jualannya diisi di kotak Rata-rata penjualan.</div></div>';
 
-  h += '<div class="grup"><h3>Rata-rata penjualan merek lain / bulan</h3><div id="e_jual"></div>' +
+  h += '<div class="grup"><h3>Rata-rata penjualan merek tanpa promotor / bulan</h3><div id="e_jual"></div>' +
     '<button class="kecil" onclick="tambahJual(\'\',\'\')">+ Tambah merek</button>' +
-    '<div class="hint"><b>Wajib diisi kalau toko tidak punya promotor merek mana pun</b> (semua 0). ' +
-    'Besarnya toko lalu diukur dari jumlah rata-rata penjualan merek lain per bulan. ' +
+    '<div class="hint">Untuk merek yang <b>tidak ada promotornya</b> di toko ini. Angkanya ikut mengukur besarnya toko. ' +
+    'Tidak tahu? Kosongkan. <b>Wajib diisi kalau toko tidak punya promotor sama sekali</b> (semua 0). ' +
     'Infinix &amp; itel tidak perlu &mdash; sudah dari angka pengambilan.</div></div>';
 
   h += '<div class="grup"><h3>Video</h3><div id="e_video"></div>' +
