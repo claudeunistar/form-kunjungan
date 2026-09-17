@@ -304,18 +304,36 @@ function tambahJual(merek, unit) {
     if (/^(infinix|itel)$/i.test(m)) return;          // SKN sudah dari pengambilan
     opsi += '<option value="' + m + '"' + (m === merek ? ' selected' : '') + '>' + m + '</option>';
   });
+  // pilihan paling bawah: merek yang tidak ada di daftar diketik sendiri
+  opsi += '<option value="__ketik">Lainnya (ketik sendiri)</option>';
   d.innerHTML =
-    '<div class="m"><label>Merek</label><select class="jm">' + opsi + '</select></div>' +
+    '<div class="m"><label>Merek</label><select class="jm" onchange="aturKetikMerek(this)">' + opsi + '</select>' +
+      '<input type="text" class="jk" placeholder="ketik nama merek" style="display:none;margin-top:6px"></div>' +
     '<div class="t"><label>Unit / bulan</label><input type="number" min="0" class="ju" placeholder="rata-rata"' +
       ((unit === '' || unit === undefined) ? '' : ' value="' + unit + '"') + '></div>' +
     '<button class="buang" onclick="this.parentNode.remove();segarkanInfo()">&times;</button>';
   wrap.appendChild(d);
   segarkanInfo();
 }
+/** "Lainnya (ketik sendiri)" dipilih -> munculkan kotak ketik nama merek. */
+function aturKetikMerek(sel) {
+  var k = sel.parentNode.querySelector('.jk');
+  var ketik = sel.value === '__ketik';
+  k.style.display = ketik ? '' : 'none';
+  if (ketik) k.focus(); else k.value = '';
+  segarkanInfo();
+}
+/** Nama merek ketikan: huruf, angka, spasi saja (supaya terbaca lagi dari teks Sheet). */
+function namaMerek(baris) {
+  var m = baris.querySelector('.jm').value;
+  if (m !== '__ketik') return m;
+  return String(baris.querySelector('.jk').value || '')
+    .replace(/[^A-Za-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').replace(/^[^A-Za-z]+/, '').trim();
+}
 function bacaJual() {
   var out = [], baris = document.getElementById('daftarJual').children;
   for (var i = 0; i < baris.length; i++) {
-    var m = baris[i].querySelector('.jm').value;
+    var m = namaMerek(baris[i]);
     if (!m) continue;
     out.push({ merek: m, unit: baris[i].querySelector('.ju').value });
   }
