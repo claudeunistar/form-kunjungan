@@ -129,8 +129,13 @@
 
   <div class="kartu">
     <h2>Video toko</h2>
-    <button class="kecil" onclick="document.getElementById('f_video').click()">Pilih / rekam video</button>
-    <input type="file" id="f_video" accept="video/*" capture="environment" multiple
+    <!-- Dua tombol: "capture" memaksa HP langsung membuka kamera, jadi galeri
+         butuh input sendiri TANPA capture. -->
+    <button class="kecil" onclick="document.getElementById('f_video').click()">&#127909; Rekam video</button>
+    <button class="kecil" onclick="document.getElementById('f_galeri').click()">&#128193; Pilih dari galeri</button>
+    <input type="file" id="f_video" accept="video/*" capture="environment"
+           style="display:none" onchange="pilihVideo(this)">
+    <input type="file" id="f_galeri" accept="video/*" multiple
            style="display:none" onchange="pilihVideo(this)">
     <div class="hint">Rekam sambil berjalan dari pintu masuk ke seluruh etalase.
       Cukup 30-60 detik. Boleh beberapa video kalau tokonya besar.</div>
