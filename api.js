@@ -42,6 +42,12 @@
       redirect: 'follow'
     })
       .then(function (r) {
+        // Google Apps Script sesekali membalas 404 / 5xx sesaat walau web app sehat
+        // (kena 19 Sep 2026 saat login). Panggilan yang aman diulang: coba lagi 2x otomatis.
+        if (!r.ok && (r.status === 404 || r.status === 429 || r.status >= 500) &&
+            AMAN_DIULANG[nama] && (percobaan || 0) < 2) {
+          return { ulang: true };
+        }
         if (!r.ok) return { ok: false, pesan: 'Server membalas HTTP ' + r.status + '. Coba lagi sebentar.' };
         return r.text().then(function (t) {
           try { return JSON.parse(t); }
@@ -49,11 +55,16 @@
         });
       })
       .then(function (j) {
+        if (j && j.ulang) {
+          var jeda = (percobaan || 0) === 0 ? 1500 : 3500;
+          setTimeout(function () { kirim(nama, args, sukses, gagal, (percobaan || 0) + 1); }, jeda);
+          return;
+        }
         if (j && j.ok) jalankan(sukses, j.hasil);
         else jalankan(gagal, new Error((j && j.pesan) || 'Server menolak permintaan.'));
       }, function (err) {
-        if (AMAN_DIULANG[nama] && !percobaan) {
-          setTimeout(function () { kirim(nama, args, sukses, gagal, 1); }, 1500);
+        if (AMAN_DIULANG[nama] && (percobaan || 0) < 2) {
+          setTimeout(function () { kirim(nama, args, sukses, gagal, (percobaan || 0) + 1); }, 1500);
           return;
         }
         jalankan(gagal, new Error('Tidak tersambung ke server. Periksa sinyal lalu coba lagi.'));
