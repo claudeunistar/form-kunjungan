@@ -145,6 +145,12 @@
       <select id="fProv" onchange="gambar()" style="display:none"><option value="">Semua provinsi</option></select>
       <input type="text" id="fCari" placeholder="Cari toko / pelapor..." oninput="gambar()" style="min-width:200px">
       <button class="tbl" id="btnUnduh" onclick="unduhExcel()">Download Excel</button>
+      <!-- 19 Sep 2026: 2 TS satu area -> toko yang sudah dinilai TS lain ikut terunduh & dinilai ulang.
+           Sekarang toko yang sudah punya kartu TIDAK masuk Excel, kecuali kotak ini dicentang. -->
+      <label style="font-size:12.5px;color:var(--redup);display:flex;align-items:center;gap:5px;cursor:pointer">
+        <input type="checkbox" id="fUlang" onchange="gambar()" style="width:auto;margin:0">
+        ikutkan yang sudah dinilai
+      </label>
       <button class="tab" onclick="muat()">Muat ulang</button>
     </div>
     <div class="saring" style="margin-top:-4px">
@@ -309,6 +315,11 @@ function gambar() {
       var pil = (r.kelengkapan === 'LENGKAP')
         ? '<span class="pil p-ok">Lengkap</span>'
         : '<span class="pil p-no">Belum</span><div class="kurang">' + esc(r.catatan) + '</div>';
+      if (sudahDinilai(r)) {
+        var gd = STATUS25[statusToko(r)];
+        pil += '<div style="margin-top:4px"><span class="pil" style="background:' + gd.latar + ';color:' + gd.teks +
+               '">' + esc(r.status25Teks || gd.label) + '</span></div>';
+      }
       var ai = (r.ambilInfinix === '' || r.ambilInfinix === null) ? '-' : r.ambilInfinix;
       var at = (r.ambilItel === '' || r.ambilItel === null) ? '-' : r.ambilItel;
       h += '<tr onclick="bukaPanel(\'' + r.id + '\')">' +
@@ -330,8 +341,13 @@ function gambar() {
              (DATA.length - lengkap) + ' perlu dilengkapi';
   // kalau sedang disaring, tunjukkan berapa yang benar-benar akan terunduh
   if (rows.length !== DATA.length) {
-    teks += '  |  tampil sekarang: ' + rows.length +
-            (TAB === 'lengkap' ? ' (ini yang masuk Excel)' : '');
+    teks += '  |  tampil sekarang: ' + rows.length;
+  }
+  if (TAB === 'lengkap') {
+    var nSudah = rows.filter(sudahDinilai).length;
+    var ulangOn = document.getElementById('fUlang') && document.getElementById('fUlang').checked;
+    teks += '  |  masuk Excel: ' + (ulangOn ? rows.length : rows.length - nSudah) +
+            (nSudah && !ulangOn ? ' (' + nSudah + ' sudah dinilai dilewati)' : '');
   }
   document.getElementById('capJml').textContent = teks;
   if (TAMPIL === 'peta') gambarPeta();
@@ -894,9 +910,20 @@ function hapus() {
 }
 
 /* ---------------- Download Excel (bentuk yang dibaca skill /nilai-toko) ---------------- */
+/** Sudah dinilai = kartu penilaian sudah ada di Drive (siapa pun TS yang menilainya). */
+function sudahDinilai(r) { return !!idDrive(r.rapor); }
 function unduhExcel() {
-  var rows = saring().filter(function (r) { return r.kelengkapan === 'LENGKAP'; });
-  if (!rows.length) { alert('Tidak ada baris lengkap untuk diunduh.'); return; }
+  var semua = saring().filter(function (r) { return r.kelengkapan === 'LENGKAP'; });
+  var ulang = document.getElementById('fUlang').checked;
+  var dilewati = ulang ? [] : semua.filter(sudahDinilai);
+  var rows = ulang ? semua : semua.filter(function (r) { return !sudahDinilai(r); });
+  if (!rows.length) {
+    alert(dilewati.length
+      ? 'Semua ' + dilewati.length + ' toko di daftar ini SUDAH dinilai - tidak ada yang perlu dinilai lagi.\n' +
+        'Kalau memang mau menilai ulang, centang "ikutkan yang sudah dinilai".'
+      : 'Tidak ada baris lengkap untuk diunduh.');
+    return;
+  }
 
   var kolom = [
     ['ID', function (r) { return r.id; }],
@@ -942,7 +969,9 @@ function unduhExcel() {
   a.download = 'Kunjungan_' + String(prov).replace(/[^\w]+/g, '_') + '_' + sufiks + '.xls';
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000);
-  alert(rows.length + ' toko lengkap masuk Excel.\nBerkas: ' + a.download);
+  alert(rows.length + ' toko masuk Excel.' +
+        (dilewati.length ? '\n' + dilewati.length + ' toko yang sudah dinilai tidak diikutkan.' : '') +
+        '\nBerkas: ' + a.download);
 }
 </script>
 </body>
