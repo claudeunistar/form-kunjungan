@@ -407,6 +407,17 @@ function gambarPeta() {
   lapisan.clearLayers();
   var rows = saring(), titik = [], tanpaGps = 0;
   var hitung = { capai: 0, mendekati: 0, belum: 0, nol: 0 };
+  // Toko HP sering berderet di satu ruko/pasar -> GPS-nya sama persis dan titiknya bertumpuk
+  // (kena 19 Sep 2026: 2 toko Baolan, Tolitoli). Kelompokkan per kotak +-20 m; kalau isinya
+  // lebih dari 1, titiknya disusun melingkar dengan jarak tetap dalam piksel.
+  function kunciLokasi(la, ln) { return Math.round(la / 0.0002) + '_' + Math.round(ln / 0.0002); }
+  var grupLokasi = {}, urutLokasi = {}, jmlBertumpuk = 0;
+  rows.forEach(function (x) {
+    var la = parseFloat(x.lat), ln = parseFloat(x.lng);
+    if (isNaN(la) || isNaN(ln)) return;
+    var k = kunciLokasi(la, ln);
+    grupLokasi[k] = (grupLokasi[k] || 0) + 1;
+  });
   for (var i = 0; i < rows.length; i++) {
     var r = rows[i];
     var lat = parseFloat(r.lat), lng = parseFloat(r.lng);
@@ -417,9 +428,25 @@ function gambarPeta() {
     var w = gaya.warna;
     var ai = (r.ambilInfinix === '' || r.ambilInfinix === null) ? '-' : r.ambilInfinix;
     var at = (r.ambilItel === '' || r.ambilItel === null) ? '-' : r.ambilItel;
-    var m = L.circleMarker([lat, lng], {
-      radius: 9, color: '#fff', weight: 2, fillColor: w, fillOpacity: 0.95
-    });
+    var kLok = kunciLokasi(lat, lng), nLok = grupLokasi[kLok];
+    var m;
+    if (nLok > 1) {
+      jmlBertumpuk++;
+      var ke = urutLokasi[kLok] = (urutLokasi[kLok] || 0) + 1;
+      var sudut = 2 * Math.PI * (ke - 1) / nLok - Math.PI / 2, jari = 12;
+      var dx = Math.round(Math.cos(sudut) * jari), dy = Math.round(Math.sin(sudut) * jari);
+      m = L.marker([lat, lng], { icon: L.divIcon({
+        className: '',
+        html: '<div style="width:18px;height:18px;border-radius:50%;background:' + w +
+              ';border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.3)"></div>',
+        iconSize: [18, 18], iconAnchor: [9 - dx, 9 - dy],
+        popupAnchor: [dx, dy - 9], tooltipAnchor: [dx, dy - 9]
+      }) });
+    } else {
+      m = L.circleMarker([lat, lng], {
+        radius: 9, color: '#fff', weight: 2, fillColor: w, fillOpacity: 0.95
+      });
+    }
     m.bindTooltip(r.toko || '(tanpa nama)', { direction: 'top' });
     m.bindPopup(
       '<div style="font-family:Segoe UI,Arial;min-width:210px">' +
@@ -461,6 +488,7 @@ function gambarPeta() {
     cap += '  |  ' + hitung.capai + ' sudah capai, ' + hitung.mendekati + ' mendekati, ' +
            hitung.belum + ' belum, ' + hitung.nol + ' belum dinilai';
   }
+  if (jmlBertumpuk > 0) cap += '  |  ' + jmlBertumpuk + ' toko berbagi lokasi yang sama (titiknya dipisah berdampingan)';
   if (tanpaGps > 0) cap += '  |  ' + tanpaGps + ' tanpa titik lokasi (isi Lat/Lng dulu)';
   document.getElementById('capPeta').textContent = cap;
 }
