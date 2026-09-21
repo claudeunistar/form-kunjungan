@@ -530,6 +530,21 @@ function tutupPanel() {
   document.getElementById('tirai').classList.remove('buka');
   EDIT = null; VIDEO_BARU = [];
 }
+// Level baru boleh diketik sendiri, tanpa menunggu daftar di Code.gs diperbarui.
+var LEVEL_LAIN = 'Lainnya (ketik sendiri)';
+function levelDiDaftar(v) { return !v || PILIH.level.indexOf(v) >= 0; }
+function cekLevelLain() {
+  var pilih = document.getElementById('e_level').value;
+  var kotak = document.getElementById('e_levelLain');
+  kotak.style.display = (pilih === LEVEL_LAIN) ? 'block' : 'none';
+  if (pilih !== LEVEL_LAIN) kotak.value = '';
+}
+function nilaiLevel() {
+  var pilih = document.getElementById('e_level').value;
+  return (pilih === LEVEL_LAIN)
+    ? document.getElementById('e_levelLain').value.trim().toUpperCase()
+    : pilih;
+}
 function opsi(arr, terpilih) {
   var h = '<option value="">-- pilih --</option>';
   arr.forEach(function (v) {
@@ -594,7 +609,13 @@ function gambarPanel() {
       '</div></div>' +
     '<div class="baris"><div><label>Area / Kota</label>' +
       '<input type="text" id="e_area" value="' + esc(r.area) + '"></div>' +
-    '<div><label>Level toko</label><select id="e_level">' + opsi(PILIH.level, r.level) + '</select></div></div>' +
+    '<div><label>Level toko</label><select id="e_level" onchange="cekLevelLain()">' +
+      opsi(PILIH.level.concat([LEVEL_LAIN]), levelDiDaftar(r.level) ? r.level : (r.level ? LEVEL_LAIN : '')) +
+      '</select>' +
+      '<input type="text" id="e_levelLain" placeholder="ketik level tokonya, mis. WMD 2"' +
+        ' value="' + (levelDiDaftar(r.level) ? '' : esc(r.level)) + '"' +
+        ' style="margin-top:6px;' + (levelDiDaftar(r.level) || !r.level ? 'display:none' : '') + '">' +
+      '</div></div>' +
     '<div class="baris"><div><label>Nama toko</label>' +
       '<input type="text" id="e_toko" value="' + esc(r.toko) + '"></div></div>' +
     '<div class="baris"><div><label>Pelapor</label>' +
@@ -882,7 +903,7 @@ function simpan() {
     provinsi: document.getElementById('e_provinsi').value,
     area: document.getElementById('e_area').value,
     toko: document.getElementById('e_toko').value,
-    level: document.getElementById('e_level').value,
+    level: nilaiLevel(),
     pelapor: document.getElementById('e_pelapor').value,
     lat: document.getElementById('e_lat').value,
     lng: document.getElementById('e_lng').value,

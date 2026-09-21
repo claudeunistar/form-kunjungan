@@ -91,7 +91,9 @@
     <label>Nama toko</label>
     <input type="text" id="f_toko" placeholder="mis. Aneka Cell">
     <label>Level toko</label>
-    <select id="f_level"><option value="">-- pilih --</option></select>
+    <select id="f_level" onchange="cekLevelLain()"><option value="">-- pilih --</option></select>
+    <input type="text" id="f_levelLain" placeholder="ketik level tokonya, mis. WMD 2"
+           style="display:none;margin-top:8px" oninput="segarkanInfo()">
     <div class="duo">
       <div>
         <label>Nama pelapor</label>
@@ -191,7 +193,7 @@ var MEREK_TETAP = ['Infinix', 'itel'];
 google.script.run.withSuccessHandler(function (p) {
   PILIHAN = p;
   isiSelect('f_provinsi', p.provinsi);
-  isiSelect('f_level', p.level);
+  isiSelect('f_level', p.level.concat([LEVEL_LAIN]));
   // Peran tidak punya baris "-- pilih --": pilihan pertama langsung terpakai
   isiSelect('f_peran', p.peran || ['Sales SKN']);
   MEREK_TETAP.forEach(function (m) { tambahPromotor(m, true); });
@@ -204,6 +206,22 @@ document.getElementById('isi').addEventListener('change', segarkanInfo);
 
 document.getElementById('f_tanggal').value = new Date().toISOString().slice(0, 10);
 
+// Level baru boleh diketik sendiri, tanpa menunggu daftar di Code.gs diperbarui.
+var LEVEL_LAIN = 'Lainnya (ketik sendiri)';
+function cekLevelLain() {
+  var pilih = document.getElementById('f_level').value;
+  var kotak = document.getElementById('f_levelLain');
+  kotak.style.display = (pilih === LEVEL_LAIN) ? 'block' : 'none';
+  if (pilih !== LEVEL_LAIN) kotak.value = '';
+  else kotak.focus();
+  segarkanInfo();
+}
+function nilaiLevel() {
+  var pilih = document.getElementById('f_level').value;
+  return (pilih === LEVEL_LAIN)
+    ? document.getElementById('f_levelLain').value.trim().toUpperCase()
+    : pilih;
+}
 function isiSelect(id, arr) {
   var s = document.getElementById(id);
   arr.forEach(function (v) {
@@ -377,8 +395,11 @@ function gambarVideo() {
     var d = document.createElement('div');
     d.className = 'vitem';
     d.innerHTML = '<div class="nm">' + v.file.name + '<div style="color:#8a99ae;font-size:11.5px">' + mb + ' MB</div>' +
+                  (v.status === 'gagal' && v.err ? '<div style="color:#b3261e;font-size:11.5px">' + v.err + '</div>' : '') +
                   (v.status === 'kirim' ? '<div class="barp"><i style="width:' + v.persen + '%"></i></div>' : '') +
-                  '</div><div class="st ' + kelas + '">' + teks + '</div>';
+                  '</div><div class="st ' + kelas + '">' + teks +
+                  (v.status === 'gagal' ? ' <button type="button" class="kecil" style="margin-left:6px;padding:4px 10px" onclick="ulangVideo(' + i + ')">ulang</button>' : '') +
+                  '</div>';
     w.appendChild(d);
   });
   segarkanInfo();
@@ -391,12 +412,34 @@ function jalankanUpload() {
   }
   if (!v) return;
   v.status = 'kirim'; v.persen = 0; gambarVideo();
+  mulaiSesi(v, 0);
+}
+// Sinyal HP sering putus sesaat -> tiap langkah dicoba ulang otomatis sebelum menyerah.
+// Aman diulang: potongan yang sama dikirim ke posisi byte yang sama di sesi Drive.
+var COBA_MAKS = 4;
+function jedaCoba(n) { return [2000, 5000, 10000, 20000][n] || 20000; }
+function gagalVideo(v, e) {
+  v.status = 'gagal';
+  v.err = (e && e.message ? e.message : 'sinyal putus') + ' Tekan "ulang".';
+  gambarVideo();
+  jalankanUpload();                                          // video lain tetap jalan
+}
+function mulaiSesi(v, coba) {
   google.script.run
-    .withSuccessHandler(function (sid) { kirimPotongan(v, sid, 0); })
-    .withFailureHandler(function (e) { v.status = 'gagal'; gambarVideo(); pesanKurang(['Upload gagal: ' + e.message]); })
+    .withSuccessHandler(function (sid) { v.sid = sid; kirimPotongan(v, sid, 0, 0); })
+    .withFailureHandler(function (e) {
+      if (coba + 1 < COBA_MAKS) setTimeout(function () { mulaiSesi(v, coba + 1); }, jedaCoba(coba));
+      else gagalVideo(v, e);
+    })
     .mulaiUpload(v.file.name, v.file.type || 'video/mp4');
 }
-function kirimPotongan(v, sid, mulai) {
+function ulangVideo(i) {
+  var v = VIDEO[i];
+  if (!v || v.status !== 'gagal') return;
+  v.status = 'antre'; v.persen = 0; v.sid = ''; v.err = '';
+  gambarVideo(); jalankanUpload();
+}
+function kirimPotongan(v, sid, mulai, coba) {
   var POTONG = 3 * 1024 * 1024;                              // kelipatan 256 KB, syarat Drive
   var akhir = Math.min(mulai + POTONG, v.file.size);
   var fr = new FileReader();
@@ -410,13 +453,18 @@ function kirimPotongan(v, sid, mulai) {
         } else {
           v.persen = Math.round(akhir / v.file.size * 100);
           gambarVideo();
-          kirimPotongan(v, sid, akhir);
+          kirimPotongan(v, sid, akhir, 0);
         }
       })
-      .withFailureHandler(function (e) { v.status = 'gagal'; gambarVideo(); pesanKurang(['Upload gagal: ' + e.message]); })
+      .withFailureHandler(function (e) {
+        var pesan = String(e && e.message || '');
+        // Sesi Drive hilang -> tak bisa disambung, mulai dari awal (sekali saja lewat tombol ulang)
+        if (pesan.indexOf('kadaluarsa') >= 0 || coba + 1 >= COBA_MAKS) { gagalVideo(v, e); return; }
+        setTimeout(function () { kirimPotongan(v, sid, mulai, coba + 1); }, jedaCoba(coba));
+      })
       .uploadChunk(sid, b64, mulai, v.file.size, akhir >= v.file.size);
   };
-  fr.onerror = function () { v.status = 'gagal'; gambarVideo(); };
+  fr.onerror = function () { gagalVideo(v, new Error('video tidak bisa dibaca dari HP')); };
   fr.readAsDataURL(v.file.slice(mulai, akhir));
 }
 
@@ -427,7 +475,7 @@ function bacaForm() {
     provinsi: document.getElementById('f_provinsi').value,
     area: document.getElementById('f_area').value,
     namaToko: document.getElementById('f_toko').value,
-    level: document.getElementById('f_level').value,
+    level: nilaiLevel(),
     pelapor: document.getElementById('f_pelapor').value,
     peran: document.getElementById('f_peran').value,
     lat: document.getElementById('f_lat').value,
