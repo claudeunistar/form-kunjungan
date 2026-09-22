@@ -376,9 +376,18 @@ function tanpaPromotorLokal(prom) {
 }
 
 /* ---------- video ---------- */
+function sudahAda(f) {
+  for (var i = 0; i < VIDEO.length; i++) {
+    var v = VIDEO[i].file;
+    if (v.name === f.name && v.size === f.size && VIDEO[i].status !== 'gagal') return true;
+  }
+  return false;
+}
 function pilihVideo(input) {
   for (var i = 0; i < input.files.length; i++) {
-    VIDEO.push({ file: input.files[i], status: 'antre', fileId: '', persen: 0 });
+    var f = input.files[i];
+    if (sudahAda(f)) continue;                               // jangan dobel kalau dipilih dua kali
+    VIDEO.push({ file: f, status: 'antre', fileId: '', persen: 0 });
   }
   input.value = '';
   gambarVideo();
@@ -396,6 +405,8 @@ function gambarVideo() {
     d.className = 'vitem';
     d.innerHTML = '<div class="nm">' + v.file.name + '<div style="color:#8a99ae;font-size:11.5px">' + mb + ' MB</div>' +
                   (v.status === 'gagal' && v.err ? '<div style="color:#b3261e;font-size:11.5px">' + v.err + '</div>' : '') +
+                  (v.file.size > 40 * 1048576 && v.status !== 'selesai'
+                    ? '<div style="color:#8a6b00;font-size:11.5px">Videonya besar, naiknya lama. Rekaman 30-60 detik sudah cukup.</div>' : '') +
                   (v.status === 'kirim' ? '<div class="barp"><i style="width:' + v.persen + '%"></i></div>' : '') +
                   '</div><div class="st ' + kelas + '">' + teks +
                   (v.status === 'gagal' ? ' <button type="button" class="kecil" style="margin-left:6px;padding:4px 10px" onclick="ulangVideo(' + i + ')">ulang</button>' : '') +
@@ -464,7 +475,12 @@ function kirimPotongan(v, sid, mulai, coba) {
       })
       .uploadChunk(sid, b64, mulai, v.file.size, akhir >= v.file.size);
   };
-  fr.onerror = function () { gagalVideo(v, new Error('video tidak bisa dibaca dari HP')); };
+  // Gagal BACA (bukan gagal kirim). Biasanya videonya masih di awan (Google Photos/Drive)
+  // dan belum terunduh ke HP, atau izin berkasnya kadung dilepas Android.
+  fr.onerror = function () {
+    if (coba + 1 < COBA_MAKS) { setTimeout(function () { kirimPotongan(v, sid, mulai, coba + 1); }, jedaCoba(coba)); return; }
+    gagalVideo(v, new Error('Video tidak terbaca dari HP. Kalau videonya dari Google Photos/Drive, unduh dulu ke HP, lalu pilih lagi.'));
+  };
   fr.readAsDataURL(v.file.slice(mulai, akhir));
 }
 
